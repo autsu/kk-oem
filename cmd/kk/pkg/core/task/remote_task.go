@@ -24,6 +24,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/kubesphere/kubekey/v3/cmd/kk/pkg/constants"
 	"github.com/kubesphere/kubekey/v3/cmd/kk/pkg/core/action"
 	"github.com/kubesphere/kubekey/v3/cmd/kk/pkg/core/cache"
 	"github.com/kubesphere/kubekey/v3/cmd/kk/pkg/core/connector"
@@ -211,15 +212,25 @@ func (t *RemoteTask) WhenWithRetry(runtime connector.Runtime) (bool, error) {
 }
 
 func (t *RemoteTask) ExecuteWithRetry(runtime connector.Runtime) error {
-	err := fmt.Errorf("[%s] exec failed after %d retries: ", t.Name, t.Retry)
+	var err error
+	if t.Retry == constants.RetryNeverStop {
+		err = fmt.Errorf("[%s] exec failed, but retry never stop", t.Name)
+	} else {
+		err = fmt.Errorf("[%s] exec failed after %d retries: ", t.Name, t.Retry)
+	}
 	for i := 0; i < t.Retry; i++ {
 		e := t.Action.Execute(runtime)
 		if e != nil {
 			logger.Log.Messagef(runtime.RemoteHost().GetName(), e.Error())
 
 			if i == t.Retry-1 {
-				err = errors.New(err.Error() + e.Error())
-				continue
+				// 如果是无限重试，将 i 重新置为 0
+				if t.Retry == constants.RetryNeverStop {
+					i = 0
+				} else {
+					err = errors.New(err.Error() + e.Error())
+					break
+				}
 			}
 			logger.Log.Infof("retry: [%s]", runtime.GetRunner().Host.GetName())
 			time.Sleep(t.Delay)
@@ -320,7 +331,7 @@ func (t *RemoteTask) Default() {
 		t.Prepare = new(prepare.BasePrepare)
 	}
 
-	if t.Retry <= 0 {
+	if t.Retry == 0 {
 		t.Retry = 3
 	}
 

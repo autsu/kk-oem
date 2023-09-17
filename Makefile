@@ -87,6 +87,8 @@ K3S_CONTROL_PLANE_CONTROLLER_IMG ?= $(REGISTRY)/$(K3S_CONTROL_PLANE_IMAGE_NAME)
 
 TAG ?= dev
 ARCH ?= $(shell go env GOARCH)
+OS ?= $(shell go env GOOS)
+
 ALL_ARCH = amd64 arm arm64 ppc64le s390x
 
 # Allow overriding the imagePullPolicy
@@ -241,7 +243,7 @@ verify-gen: generate  ## Verify go generated files are up to date
 
 .PHONY: kk
 kk:
-	CGO_ENABLED=0 go build -trimpath -tags "$(BUILDTAGS)" -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/kk github.com/kubesphere/kubekey/v3/cmd/kk;
+	CGO_ENABLED=0 GOARCH=$(ARCH) GOOS=$(OS) go build -trimpath -tags "$(BUILDTAGS)" -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/kk github.com/kubesphere/kubekey/v3/cmd/kk;
 
 ALL_MANAGERS = capkk k3s-bootstrap k3s-control-plane
 

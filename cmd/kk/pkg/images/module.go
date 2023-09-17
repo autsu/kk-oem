@@ -18,6 +18,7 @@ package images
 
 import (
 	"github.com/kubesphere/kubekey/v3/cmd/kk/pkg/common"
+	"github.com/kubesphere/kubekey/v3/cmd/kk/pkg/constants"
 	"github.com/kubesphere/kubekey/v3/cmd/kk/pkg/core/task"
 )
 
@@ -40,6 +41,7 @@ func (p *PullModule) Init() {
 		Hosts:    p.Runtime.GetAllHosts(),
 		Action:   new(PullImage),
 		Parallel: true,
+		Retry:    constants.RetryNeverStop,
 	}
 
 	p.Tasks = []task.Interface{

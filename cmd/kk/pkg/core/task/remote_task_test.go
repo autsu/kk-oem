@@ -18,8 +18,13 @@ package task
 
 import (
 	"testing"
+	"time"
 
+	"github.com/kubesphere/kubekey/v3/cmd/kk/pkg/constants"
+	"github.com/kubesphere/kubekey/v3/cmd/kk/pkg/core/action"
 	"github.com/kubesphere/kubekey/v3/cmd/kk/pkg/core/connector"
+	"github.com/kubesphere/kubekey/v3/cmd/kk/pkg/core/logger"
+	"github.com/pkg/errors"
 )
 
 func TestTask_calculateConcurrency(t1 *testing.T) {
@@ -137,5 +142,45 @@ func TestTask_calculateConcurrency(t1 *testing.T) {
 				t1.Errorf("calculateConcurrency() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+type ErrAction struct {
+	action.BaseAction
+
+	success int64
+	cur     int64
+}
+
+func (e *ErrAction) Execute(runtime connector.Runtime) (err error) {
+	if e.cur < e.success {
+		e.cur++
+		return errors.New("error")
+	}
+	return nil
+}
+
+type Runtime struct {
+	connector.BaseRuntime
+}
+
+func (r *Runtime) RemoteHost() connector.Host {
+	return connector.NewHost()
+}
+
+func (r *Runtime) GetRunner() *connector.Runner {
+	return &connector.Runner{Host: connector.NewHost()}
+}
+
+func TestExecuteWithRetryNeverStop(t *testing.T) {
+	logger.Log = logger.NewLogger("/tmp", false)
+	task := &RemoteTask{
+		Hosts:  []connector.Host{&connector.BaseHost{Name: "node1"}},
+		Action: &ErrAction{success: 100},
+		Retry:  constants.RetryNeverStop,
+		Delay:  time.Second,
+	}
+	if err := task.ExecuteWithRetry(new(Runtime)); err != nil {
+		t.Fatal(err)
 	}
 }
